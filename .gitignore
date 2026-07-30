@@ -1,0 +1,19 @@
+# 1. 忽略敏感情資與金鑰檔案 (最重要！防止外洩)
+DC_Key.env.txt
+.env
+*.env.txt
+
+# 2. 忽略 Python 快取與編譯檔案
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 3. 忽略 IDE 暫存與作業系統垃圾檔案
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 4. 忽略本地臨時測試與抓取檔案
+page_storage.html
+scratch_check.py

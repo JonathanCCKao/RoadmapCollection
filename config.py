@@ -1,9 +1,18 @@
 import os
 
 def load_dotenv():
-    """Loads environment variables from a local .env or DC_Key.env.txt file if it exists."""
-    for filename in [".env", "DC_Key.env.txt"]:
-        env_path = os.path.join(os.path.dirname(__file__), filename)
+    """Loads environment variables from local or external shared credentials files."""
+    # List of candidate paths to search for environment configuration
+    paths = [
+        # 1. External shared directory (recommended for local security and portability)
+        os.path.join(os.path.dirname(os.path.dirname(__file__)), "Key_No_Release", "DC_Key.env.txt"),
+        # 2. Hardcoded fallback absolute path (guarantees match on user's local PC)
+        r"C:\Users\jonathancc_kao\Vibe_Coding\Key_No_Release\DC_Key.env.txt",
+        # 3. Local fallback paths (retains backward compatibility & CI pipeline support)
+        os.path.join(os.path.dirname(__file__), ".env"),
+        os.path.join(os.path.dirname(__file__), "DC_Key.env.txt"),
+    ]
+    for env_path in paths:
         if os.path.exists(env_path):
             with open(env_path, "r", encoding="utf-8") as f:
                 for line in f:
@@ -12,7 +21,6 @@ def load_dotenv():
                         continue
                     if "=" in line:
                         key, val = line.split("=", 1)
-                        # Strip spaces and optional quotes
                         os.environ[key.strip()] = val.strip().strip("'\"")
             break
 

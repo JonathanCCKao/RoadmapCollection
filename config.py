@@ -1,14 +1,16 @@
 import os
 
 def load_dotenv():
-    """Loads environment variables from local or external shared credentials files."""
-    # List of candidate paths to search for environment configuration
+    """Loads environment variables from local and external shared credentials files."""
+    # List of all files to check and load (non-exclusive; we load all that exist)
     paths = [
-        # 1. External shared directory (recommended for local security and portability)
+        # 1. Local project parameters (easy to adjust for users, checked into Git)
+        os.path.join(os.path.dirname(__file__), "settings.env"),
+        # 2. Sibling relative path for external shared credentials folder
         os.path.join(os.path.dirname(os.path.dirname(__file__)), "Key_No_Release", "DC_Key.env.txt"),
-        # 2. Hardcoded fallback absolute path (guarantees match on user's local PC)
+        # 3. Hardcoded absolute path to external shared credentials folder
         r"C:\Users\jonathancc_kao\Vibe_Coding\Key_No_Release\DC_Key.env.txt",
-        # 3. Local fallback paths (retains backward compatibility & CI pipeline support)
+        # 4. Legacy local fallback paths
         os.path.join(os.path.dirname(__file__), ".env"),
         os.path.join(os.path.dirname(__file__), "DC_Key.env.txt"),
     ]
@@ -22,7 +24,6 @@ def load_dotenv():
                     if "=" in line:
                         key, val = line.split("=", 1)
                         os.environ[key.strip()] = val.strip().strip("'\"")
-            break
 
 # Load variables from .env file before initializing Config properties
 load_dotenv()

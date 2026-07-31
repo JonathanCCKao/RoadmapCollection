@@ -1,5 +1,6 @@
 # 1. 忽略敏感情資與金鑰檔案 (最重要！防止外洩)
 DC_Key.env.txt
+git_token.txt
 .env
 *.env.txt
 

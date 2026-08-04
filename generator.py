@@ -81,10 +81,10 @@ def generate_plantuml_gantt(projects, scale="quarterly", zoom=3, update_time=Non
 
     # Add soft background colors for different years to distinguish them (no black)
     year_backgrounds = [
-        "#FFFFFF",  # 1st Year: Pure White (no background color)
-        "#EAEDED",  # 2nd Year: High contrast light gray
+        "#FFFFFF",  # 1st Year: Pure White
+        "#FFFFFF",  # 2nd Year: Pure White
         "#FFFFFF",  # 3rd Year: Pure White
-        "#EAEDED"   # 4th Year: High contrast light gray
+        "#FFFFFF"   # 4th Year: Pure White
     ]
 
     if all_dates:

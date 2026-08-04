@@ -22,6 +22,21 @@ MILESTONE_COLORS = {
     "p5": "#58D68D"   # Soft emerald green (GA / Launch)
 }
 
+MILESTONE_TEXT_COLORS = {
+    "c0": "#1F4E79",  # Deep Navy (for ice blue background)
+    "c1": "#1F4E79",  # Deep Navy (for sky blue background)
+    "c2": "#1F4E79",  # Deep Navy (for business blue background)
+    "c3": "#FFFFFF",  # White (for steel blue background)
+    "c4": "#FFFFFF",  # White (for deep navy background)
+    "c5": "#1F4E79",  # Deep Navy (for emerald green background)
+    "p0": "#1F4E79",
+    "p1": "#1F4E79",
+    "p2": "#1F4E79",
+    "p3": "#FFFFFF",
+    "p4": "#FFFFFF",
+    "p5": "#1F4E79"
+}
+
 def generate_plantuml_gantt(projects, scale="quarterly", zoom=3, update_time=None):
     """
     Generates a PlantUML Gantt chart with milestones represented as contiguous
@@ -129,9 +144,11 @@ def generate_plantuml_gantt(projects, scale="quarterly", zoom=3, update_time=Non
                 
             task_id = f"{project_name}_{key}"
             color = MILESTONE_COLORS.get(key, "#3498DB")
+            text_color = MILESTONE_TEXT_COLORS.get(key, "#1F4E79")
+            display_label = f"<color:{text_color}><b>{label}</b></color>"
             
             # Define task: [C1] as [project_c1] starts YYYY-MM-DD and ends YYYY-MM-DD
-            lines.append(f"[{label}] as [{task_id}] {time_def}")
+            lines.append(f"[{display_label}] as [{task_id}] {time_def}")
             lines.append(f"[{task_id}] is colored in {color}")
             
             # Align all tasks of this project on the same horizontal row

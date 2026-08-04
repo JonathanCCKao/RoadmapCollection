@@ -82,9 +82,9 @@ def generate_plantuml_gantt(projects, scale="quarterly", zoom=3, update_time=Non
     # Add soft background colors for different years to distinguish them (no black)
     year_backgrounds = [
         "#FFFFFF",  # 1st Year: Pure White (no background color)
-        "#F2F4F4",  # 2nd Year: Cool light gray
+        "#EAEDED",  # 2nd Year: High contrast light gray
         "#FFFFFF",  # 3rd Year: Pure White
-        "#F2F4F4"   # 4th Year: Cool light gray
+        "#EAEDED"   # 4th Year: High contrast light gray
     ]
 
     if all_dates:
@@ -99,7 +99,7 @@ def generate_plantuml_gantt(projects, scale="quarterly", zoom=3, update_time=Non
         years = sorted(list(set(int(d.split("-")[0]) for d in all_dates)))
         for yr in range(min(years) + 1, max(years) + 1):
             boundary_date = f"{yr}-01-01"
-            lines.append(f"{boundary_date} is colored in #CCD1D1")
+            lines.append(f"{boundary_date} is colored in #95A5A6")
 
     for p in projects:
         project_name = p["project"]

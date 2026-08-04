@@ -8,18 +8,18 @@ MILESTONE_LABELS = {
 }
 
 MILESTONE_COLORS = {
-    "c0": "#85C1E9",  # Soft Blue
-    "c1": "#3498DB",  # Blue (Design)
-    "c2": "#9B59B6",  # Purple (Alpha)
-    "c3": "#E67E22",  # Orange (Beta)
-    "c4": "#E74C3C",  # Red (Pilot)
-    "c5": "#2ECC71",  # Green (GA)
-    "p0": "#85C1E9",  # Soft Blue
-    "p1": "#3498DB",  # Blue
-    "p2": "#9B59B6",  # Purple
-    "p3": "#E67E22",  # Orange
-    "p4": "#E74C3C",  # Red
-    "p5": "#2ECC71"   # Green
+    "c0": "#EBF5FB",  # Very light ice blue
+    "c1": "#AED6F1",  # Soft sky blue
+    "c2": "#5DADE2",  # Business blue
+    "c3": "#2E86C1",  # Steel blue
+    "c4": "#1B4F72",  # Deep navy blue
+    "c5": "#58D68D",  # Soft emerald green (GA / Launch)
+    "p0": "#EBF5FB",  # Very light ice blue
+    "p1": "#AED6F1",  # Soft sky blue
+    "p2": "#5DADE2",  # Business blue
+    "p3": "#2E86C1",  # Steel blue
+    "p4": "#1B4F72",  # Deep navy blue
+    "p5": "#58D68D"   # Soft emerald green (GA / Launch)
 }
 
 def generate_plantuml_gantt(projects, scale="quarterly", zoom=3, update_time=None):

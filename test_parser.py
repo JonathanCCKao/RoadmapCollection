@@ -396,7 +396,7 @@ class TestConfluenceRoadmap(unittest.TestCase):
         self.assertIn("[NOW] is colored in #E74C3C", gantt)
         self.assertIn("2026-01-01 to 2026-12-31 are colored in #FDF2E9", gantt)
         self.assertIn("[C0] as [IES-3100_c0] starts 2026-03-01 and ends 2026-05-15", gantt)
-        self.assertIn("[IES-3100_c0] is colored in #85C1E9", gantt)
+        self.assertIn("[IES-3100_c0] is colored in #EBF5FB", gantt)
         self.assertIn("[IES-3100_c1] displays on same row as [IES-3100_c0]", gantt)
         self.assertIn("@endgantt", gantt)
 

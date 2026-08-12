@@ -12,21 +12,24 @@ def normalize_date(text):
     """
     Extracts and normalizes a date string to YYYY-MM-DD.
     Returns None if no valid date is found.
+    If multiple dates exist (e.g. a range), returns the LAST one.
     """
     if not text:
         return None
     
     text = text.strip()
-    match = DATE_RE.search(text)
-    if match:
-        year, month, day = match.groups()
-        try:
-            # Validate and format date
-            dt = datetime(int(year), int(month), int(day))
-            return dt.strftime("%Y-%m-%d")
-        except ValueError as e:
-            logger.warning(f"Invalid date values parsed from '{text}': {e}")
-            return None
+    matches = list(DATE_RE.finditer(text))
+    if not matches:
+        return None
+        
+    match = matches[-1]
+    year, month, day = match.groups()
+    try:
+        dt = datetime(int(year), int(month), int(day))
+        return dt.strftime("%Y-%m-%d")
+    except ValueError as e:
+        logger.warning(f"Invalid date values parsed from '{text}': {e}")
+        return None
     return None
 
 def create_project_dict(project_name, dates, is_p_format=True):
@@ -55,11 +58,89 @@ def create_project_dict(project_name, dates, is_p_format=True):
         "owner": ""
     }
 
+def extract_milestones_from_cell(cell, parent_table):
+    """
+    Extracts a dictionary of milestone_label -> date_str from a cell.
+    Supports task-lists, bullet lists with time tags, and text fallbacks.
+    """
+    milestones = {}
+    if not cell:
+        return milestones
+        
+    milestone_keys = ["c0", "c1", "c2", "c3", "c4", "c5", "p0", "p1", "p2", "p3", "p4", "p5"]
+        
+    # 1. Check if there is an ac:task-list
+    tasks = cell.find_all("ac:task")
+    if tasks:
+        for task in tasks:
+            task_body = task.find("ac:task-body")
+            if not task_body:
+                continue
+            text = task_body.get_text(" ", strip=True)
+            label_match = re.search(r"\b([cp][0-5])\b", text, re.IGNORECASE)
+            if not label_match:
+                continue
+            label = label_match.group(1).lower()
+            
+            # Find date in status macro parameter title
+            date_val = None
+            status_title = task_body.find("ac:parameter", attrs={"ac:name": "title"})
+            if status_title:
+                date_val = normalize_date(status_title.get_text(strip=True))
+            if not date_val:
+                date_val = normalize_date(text)
+            if date_val:
+                milestones[label] = date_val
+        return milestones
+
+    # 2. Check if there are li items
+    li_items = cell.find_all("li")
+    if li_items:
+        for li in li_items:
+            # Check if this li belongs to a nested table (skip it)
+            if li.find_parent("table") != parent_table:
+                continue
+            text = li.get_text(" ", strip=True)
+            label_match = re.search(r"\b([cp][0-5])\b", text, re.IGNORECASE)
+            if not label_match:
+                continue
+            label = label_match.group(1).lower()
+            
+            # Find date
+            date_val = None
+            time_tags = li.find_all("time")
+            if time_tags:
+                dates = [normalize_date(t.get("datetime")) for t in time_tags if t.get("datetime")]
+                dates = [d for d in dates if d]
+                if dates:
+                    date_val = dates[-1]
+            if not date_val:
+                date_val = normalize_date(text)
+            if date_val:
+                milestones[label] = date_val
+        return milestones
+
+    # 3. Fallback to line-by-line parsing of the cell
+    lines = cell.get_text("\n").split("\n")
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        label_match = re.search(r"\b([cp][0-5])\b", line, re.IGNORECASE)
+        if not label_match:
+            continue
+        label = label_match.group(1).lower()
+        date_val = normalize_date(line)
+        if date_val:
+            milestones[label] = date_val
+            
+    return milestones
+
 def parse_confluence_table(html_content):
     """
-    Parses Confluence storage format HTML, finds all tables containing
-    milestone milestones (in original format, rowspan format, or new explicit
-    milestone format), and extracts all project information.
+    Parses Confluence HTML, finds all tables containing milestone roadmaps,
+    and extracts all project information with support for multiple formats
+    and nested table skipping.
     """
     soup = BeautifulSoup(html_content, "html.parser")
     tables = soup.find_all("table")
@@ -69,15 +150,18 @@ def parse_confluence_table(html_content):
         return []
 
     all_projects = []
+    milestone_keys = ["c0", "c1", "c2", "c3", "c4", "c5", "p0", "p1", "p2", "p3", "p4", "p5"]
 
     for table_idx, table in enumerate(tables):
-        rows = table.find_all("tr")
+        # Filter rows to only those belonging directly to this table
+        all_trs = table.find_all("tr")
+        rows = [tr for tr in all_trs if tr.find_parent("table") == table]
         if not rows:
             continue
         
         # Identify the header row
         header_row = rows[0]
-        headers = [th.get_text(strip=True).lower() for th in header_row.find_all(["th", "td"])]
+        headers = [th.get_text(strip=True).lower() for th in header_row.find_all(["th", "td"], recursive=False)]
         
         # Determine table structure
         has_project = any("專案" in h or "project" in h for h in headers)
@@ -85,7 +169,6 @@ def parse_confluence_table(html_content):
         has_c0_c5 = any("c0-c5" in h for h in headers)
         has_p0_p5 = any("p0-p5" in h or "p0 - p5" in h for h in headers)
         
-        milestone_keys = ["c0", "c1", "c2", "c3", "c4", "c5", "p0", "p1", "p2", "p3", "p4", "p5"]
         has_old_milestones = any(any(k in h for h in headers) for k in milestone_keys)
         
         is_explicit_milestone = has_project and has_milestone_hdr
@@ -99,13 +182,13 @@ def parse_confluence_table(html_content):
         if is_explicit_milestone:
             logger.info(f"Parsing Table {table_idx} as explicit milestone structure.")
             
-            # Map headers to column offsets to find status, project, and milestone
+            # Map headers to column offsets
             status_idx = -1
             project_idx = -1
             milestone_idx = -1
             owner_idx = -1
             col_offset = 0
-            for h_cell in header_row.find_all(["th", "td"]):
+            for h_cell in header_row.find_all(["th", "td"], recursive=False):
                 h_text = h_cell.get_text(strip=True).lower()
                 colspan = int(h_cell.get("colspan", 1))
                 if "status" in h_text or "狀態" in h_text:
@@ -125,11 +208,10 @@ def parse_confluence_table(html_content):
             project_milestones = {}
             
             for row in rows[1:]:
-                cols = row.find_all(["td", "th"])
+                cols = row.find_all(["td", "th"], recursive=False)
                 if not cols:
                     continue
                 
-                # If row has project cell (typically when len(cols) >= 5 or cols[0].has_attr("rowspan"))
                 has_project_cell = len(cols) >= 5 or cols[0].has_attr("rowspan")
                 
                 if has_project_cell:
@@ -143,32 +225,30 @@ def parse_confluence_table(html_content):
                             "owner": project_owner
                         })
                     
-                    # Extract type (e.g. NPDP) and name (e.g. Axx) from project column
-                    raw_project = cols[project_idx].get_text(strip=True) if project_idx != -1 else ""
-                    lines = [l.strip() for l in cols[project_idx].get_text("\n").split("\n") if l.strip()] if project_idx != -1 else []
-                    project_lines = [l for l in lines if "-" not in l]
+                    # Extract project info from project column
+                    cell_text = cols[project_idx].get_text("\n") if project_idx != -1 and project_idx < len(cols) else ""
+                    lines = [l.strip() for l in cell_text.split("\n") if l.strip()]
+                    project_lines = [l for l in lines if not re.match(r"^[-=\s]+$", l)]
                     
                     if len(project_lines) >= 2:
-                        project_arch = project_lines[0] # Store type (NPDP) as arch
-                        current_project = project_lines[1]
+                        project_arch = project_lines[0]
+                        current_project = " ".join(project_lines[1:])
                     elif len(project_lines) == 1:
                         project_arch = ""
                         current_project = project_lines[0]
                     else:
+                        current_project = cols[project_idx].get_text(strip=True) if project_idx != -1 and project_idx < len(cols) else ""
                         project_arch = ""
-                        current_project = raw_project
                     
-                    # Extract milestone label and date
                     m_idx = milestone_idx if milestone_idx != -1 else 1
                     milestone_cell = cols[m_idx] if m_idx < len(cols) else None
                     date_cell = cols[m_idx + 1] if (m_idx + 1) < len(cols) else None
                     
-                    # Extract status and owner if their columns were identified
+                    # Extract status and owner
                     project_status = ""
                     project_owner = ""
                     if status_idx != -1 and status_idx < len(cols):
                         status_cell = cols[status_idx]
-                        # Look for handy status parameter
                         status_param = status_cell.find("ac:parameter", attrs={"ac:name": "Status"})
                         if status_param:
                             project_status = status_param.get_text(strip=True)
@@ -184,22 +264,32 @@ def parse_confluence_table(html_content):
                     date_cell = cols[1] if len(cols) > 1 else None
                 
                 if milestone_cell:
-                    # Read milestone label (e.g. "P0", "P1")
-                    m_label = milestone_cell.get_text(strip=True).lower().replace(" ", "")
+                    # Format B: multiple milestones parsed inside this cell
+                    extracted = extract_milestones_from_cell(milestone_cell, table)
                     
-                    # Extract date
-                    date_val = None
-                    if date_cell:
-                        time_tag = date_cell.find("time")
-                        if time_tag and time_tag.get("datetime"):
-                            date_val = normalize_date(time_tag.get("datetime"))
-                        else:
-                            date_val = normalize_date(date_cell.get_text(strip=True))
-                            
-                    if date_val and m_label:
-                        project_milestones[m_label] = date_val
+                    # Format A: fallback (milestone label in this cell, date in next cell)
+                    if not extracted:
+                        m_label = milestone_cell.get_text(strip=True).lower().replace(" ", "")
+                        date_val = None
+                        if date_cell:
+                            time_tag = date_cell.find("time")
+                            if time_tag and time_tag.get("datetime"):
+                                date_val = normalize_date(time_tag.get("datetime"))
+                            else:
+                                date_val = normalize_date(date_cell.get_text(strip=True))
+                        if date_val and m_label:
+                            clean_label = None
+                            for k in milestone_keys:
+                                if k in m_label:
+                                    clean_label = k
+                                    break
+                            if clean_label:
+                                extracted[clean_label] = date_val
+                            else:
+                                extracted[m_label] = date_val
+                                
+                    project_milestones.update(extracted)
                     
-            # Save last project of the table
             if current_project and project_milestones:
                 all_projects.append({
                     "project": current_project,
@@ -215,14 +305,13 @@ def parse_confluence_table(html_content):
             project_dates = []
             
             for row in rows[1:]:
-                cols = row.find_all(["td", "th"])
+                cols = row.find_all(["td", "th"], recursive=False)
                 if not cols:
                     continue
                 
                 first_cell = cols[0]
                 has_rowspan = first_cell.has_attr("rowspan")
                 
-                # Identify if this row starts a new project
                 is_new_project = False
                 if current_project is None:
                     is_new_project = True
@@ -232,7 +321,6 @@ def parse_confluence_table(html_content):
                     is_new_project = True
                     
                 if is_new_project:
-                    # Save the previous project if it exists
                     if current_project and project_dates:
                         all_projects.append(create_project_dict(current_project, project_dates, is_p_format=has_p0_p5))
                         
@@ -242,7 +330,6 @@ def parse_confluence_table(html_content):
                 else:
                     date_cell = cols[0]
                 
-                # Extract and normalize date
                 if date_cell:
                     date_val = None
                     time_tag = date_cell.find("time")
@@ -254,13 +341,11 @@ def parse_confluence_table(html_content):
                     if date_val:
                         project_dates.append(date_val)
                         
-            # Save last project in table
             if current_project and project_dates:
                 all_projects.append(create_project_dict(current_project, project_dates, is_p_format=has_p0_p5))
                 
         elif is_old_structure:
             logger.info(f"Parsing Table {table_idx} as original flat structure.")
-            # Map column names to indices
             indices = {
                 "project": -1, "arch": -1,
                 "c0": -1, "c1": -1, "c2": -1, "c3": -1, "c4": -1, "c5": -1,
@@ -278,13 +363,12 @@ def parse_confluence_table(html_content):
                 elif "owner" in h or "負責" in h:
                     indices["owner"] = i
                 else:
-                    # Check other keys
                     for k in milestone_keys:
                         if k in h:
                             indices[k] = i
 
             for row in rows[1:]:
-                cols = row.find_all(["td", "th"])
+                cols = row.find_all(["td", "th"], recursive=False)
                 if not cols:
                     continue
                 
@@ -317,5 +401,5 @@ def parse_confluence_table(html_content):
                     "owner": owner
                 })
                 
-    logger.info(f"Successfully parsed {len(all_projects)} projects from the milestones table(s).")
+    logger.info(f"Successfully parsed {len(all_projects)} projects from the Confluence table(s).")
     return all_projects

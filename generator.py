@@ -57,7 +57,7 @@ def generate_plantuml_gantt(projects, scale="quarterly", zoom=3, update_time=Non
 
     lines = [
         "@startgantt",
-        f"right header <font color=\"#1F4E79\"><b>最後更新時間: {update_time}</b></font>",
+        f"right header <font color=\"#E74C3C\"><b>Roadmap圖表更新時間 : {update_time}</b></font>",
         "title <size:20>交換機產品Roadmap</size>"
     ]
     

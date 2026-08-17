@@ -388,7 +388,7 @@ class TestConfluenceRoadmap(unittest.TestCase):
         ]
         gantt = generate_chart(projects, mode="plantuml", update_time="2026-03-01 12:00")
         self.assertIn("@startgantt", gantt)
-        self.assertIn("right header <font color=\"#1F4E79\"><b>最後更新時間: 2026-03-01 12:00</b></font>", gantt)
+        self.assertIn("right header <font color=\"#E74C3C\"><b>Roadmap圖表更新時間 : 2026-03-01 12:00</b></font>", gantt)
         self.assertIn("project starts 2026-03-01", gantt)
         self.assertIn("projectscale quarterly zoom 3", gantt)
         self.assertIn("today is colored in #E74C3C", gantt)
@@ -432,7 +432,7 @@ class TestConfluenceRoadmap(unittest.TestCase):
             }
         ]
         gantt = generate_chart(projects, mode="plantuml", update_time="2026-03-01 12:00")
-        self.assertIn("right header <font color=\"#1F4E79\"><b>最後更新時間: 2026-03-01 12:00</b></font>", gantt)
+        self.assertIn("right header <font color=\"#E74C3C\"><b>Roadmap圖表更新時間 : 2026-03-01 12:00</b></font>", gantt)
         self.assertIn("[<color:#E74C3C><b>NOW</b></color>] as [now_marker] happens 2026-03-01", gantt)
         self.assertIn("[now_marker] is colored in #E74C3C", gantt)
         self.assertIn('<font color="#922B21">**Axx**</font>', gantt)

@@ -472,5 +472,24 @@ class TestConfluenceRoadmap(unittest.TestCase):
         self.assertTrue(updated.endswith("</ac:structured-macro>"))
         self.assertIn("Some content before", updated)
 
+    def test_update_html_body_with_projects(self):
+        existing_body = "<p>Some content before</p>"
+        chart_code = "@startgantt\ntitle Chart\n@endgantt"
+        projects = [{"project": "Test Proj", "status": "On Track", "milestones": {"p1": "2026-08-17"}}]
+        
+        # 1. Test insertion when no macro exists
+        updated = update_html_body(existing_body, chart_code, mode="plantuml", projects_data=projects)
+        self.assertIn("Roadmap Data Source", updated)
+        self.assertIn("Test Proj", updated)
+        self.assertIn("2026-08-17", updated)
+        
+        # 2. Test replacement when both chart and expand macro exist
+        new_projects = [{"project": "Updated Proj", "status": "On Track", "milestones": {"p1": "2026-08-18"}}]
+        second_update = update_html_body(updated, chart_code, mode="plantuml", projects_data=new_projects)
+        self.assertIn("Updated Proj", second_update)
+        self.assertNotIn("Test Proj", second_update)
+        # Ensure only one copy of expand macro exists (count of title text should be 1)
+        self.assertEqual(second_update.count("Roadmap Data Source"), 1)
+
 if __name__ == "__main__":
     unittest.main()

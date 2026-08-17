@@ -143,7 +143,8 @@ def main():
         target_body_html, 
         chart_code, 
         mode=Config.RENDER_MODE, 
-        insert_position=Config.INSERT_POSITION
+        insert_position=Config.INSERT_POSITION,
+        projects_data=projects
     )
 
     # 8. Push update back to Confluence

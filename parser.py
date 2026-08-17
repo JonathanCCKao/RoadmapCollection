@@ -285,8 +285,6 @@ def parse_confluence_table(html_content):
                                     break
                             if clean_label:
                                 extracted[clean_label] = date_val
-                            else:
-                                extracted[m_label] = date_val
                                 
                     project_milestones.update(extracted)
                     

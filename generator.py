@@ -76,8 +76,8 @@ def generate_plantuml_gantt(projects, scale="quarterly", zoom=3, update_time=Non
     else:
         from datetime import datetime
         today_str = datetime.now().strftime("%Y-%m-%d")
-    lines.append(f"[NOW] happens {today_str}")
-    lines.append("[NOW] is colored in #E74C3C")
+    lines.append(f"[<color:#E74C3C><b>NOW</b></color>] as [now_marker] happens {today_str}")
+    lines.append("[now_marker] is colored in #E74C3C")
 
     # Add soft background colors for different years to distinguish them (no black)
     year_backgrounds = [

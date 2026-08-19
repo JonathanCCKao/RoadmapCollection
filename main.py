@@ -1,5 +1,6 @@
 import argparse
 import sys
+import os
 import logging
 from config import Config
 from confluence_client import ConfluenceClient
@@ -51,6 +52,12 @@ def write_guidelines_file():
 4. 📅 日期格式限制
    - 支援格式：YYYY-MM-DD, YYYY/MM/DD, YYYY.MM.DD。
    - 必須是實體存在的日期 (如 2026-02-31 會被判定為無效日期並被忽略)。
+
+5. 🔄 網頁異動自動檢查機制
+   - 程式每次執行會自動比對 Confluence 來源網頁的最新版本號與本地快取檔 `.confluence_version`。
+   - 若版號無變動，代表網頁未被編輯，系統會自動跳過本次繪製與發布以節省資源。
+   - **強制更新**：若調整了 settings.env（例如縮放倍率、季度/月份刻度），請在執行時加入 `--force` 參數強制更新：
+     python main.py --force
 ====================================================================
 """
     try:
@@ -70,7 +77,22 @@ def main():
         action="store_true", 
         help="Fetch and parse page, generate Gantt syntax, but do not write back to Confluence."
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force roadmap generation and update even if page version has not changed."
+    )
     args = parser.parse_args()
+
+    # Load version cache
+    version_cache_file = ".confluence_version"
+    last_version = None
+    if os.path.exists(version_cache_file):
+        try:
+            with open(version_cache_file, "r") as f:
+                last_version = int(f.read().strip())
+        except Exception as e:
+            logger.warning(f"Failed to read cached version: {e}")
 
     # 1. Load and validate configuration
     try:
@@ -98,6 +120,11 @@ def main():
     title = source_page.get("title", "")
     version_num = source_page.get("version", {}).get("number", 1)
     body_html = source_page.get("body", {}).get("storage", {}).get("value", "")
+
+    # Check if page has changed
+    if not args.force and last_version is not None and version_num == last_version:
+        logger.info(f"Confluence page version {version_num} has not changed since last run. Skipping update.")
+        sys.exit(0)
 
     if not body_html:
         logger.error("Source page has no body content or storage format is empty.")
@@ -151,6 +178,16 @@ def main():
     try:
         client.update_page(Config.TARGET_PAGE_ID, target_title, updated_body, target_version_num)
         logger.info(f"Successfully updated Confluence page {Config.TARGET_PAGE_ID}!")
+        
+        # Save processed source page version to cache file
+        try:
+            cached_val = version_num + 1 if Config.SOURCE_PAGE_ID == Config.TARGET_PAGE_ID else version_num
+            with open(version_cache_file, "w") as f:
+                f.write(str(cached_val))
+            logger.info(f"Cached processed source page version: {cached_val}")
+        except Exception as cache_err:
+            logger.warning(f"Failed to cache processed page version: {cache_err}")
+            
     except Exception as e:
         logger.error(f"Failed to update page {Config.TARGET_PAGE_ID}: {e}")
         sys.exit(1)

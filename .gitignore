@@ -18,3 +18,7 @@ Thumbs.db
 # 4. 忽略本地臨時測試與抓取檔案
 page_storage.html
 scratch_check.py
+
+# 5. 忽略本地快取與除錯檔案
+.confluence_version
+scratch_*

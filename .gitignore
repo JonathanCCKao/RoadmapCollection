@@ -22,3 +22,4 @@ scratch_check.py
 # 5. 忽略本地快取與除錯檔案
 .confluence_version
 scratch_*
+scheduler_log.txt
